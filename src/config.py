@@ -52,6 +52,11 @@ GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "")
 GROQ_MODEL    = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
 GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
+# ── DeepSeek ──────────────────────────────────────────────────────────────
+DEEPSEEK_API_KEY  = os.getenv("DEEPSEEK_API_KEY", "")
+DEEPSEEK_MODEL    = os.getenv("DEEPSEEK_MODEL") or os.getenv("DEEPSEEK_API", "deepseek-v4.1-flash")
+DEEPSEEK_BASE_URL = os.getenv("DEEPSEEK_BASE_URL", "https://api.deepseek.com").rstrip("/")
+
 # ── LangSmith ─────────────────────────────────────────────────────────────
 LANGSMITH_API_KEY = os.getenv("LANGCHAIN_API_KEY", "")
 LANGSMITH_PROJECT = os.getenv("LANGCHAIN_PROJECT", "day22-lab")
@@ -77,6 +82,8 @@ def validate() -> bool:
         missing.append("OPENROUTER_API_KEY (lấy tại https://openrouter.ai/keys)")
     elif PROVIDER == "groq" and (not GROQ_API_KEY or GROQ_API_KEY.startswith("your_")):
         missing.append("GROQ_API_KEY (lấy tại https://console.groq.com/keys)")
+    elif PROVIDER == "deepseek" and (not DEEPSEEK_API_KEY or DEEPSEEK_API_KEY.startswith("your_")):
+        missing.append("DEEPSEEK_API_KEY")
     # Ollama: không cần API key
 
     if missing:

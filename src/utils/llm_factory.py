@@ -95,10 +95,22 @@ def get_llm(provider: str = None, temperature: float = 0.0):
             timeout=120.0,
         )
 
+    elif provider == "deepseek":
+        # DeepSeek dùng OpenAI-compatible API
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=config.DEEPSEEK_MODEL,
+            api_key=config.DEEPSEEK_API_KEY,
+            base_url=config.DEEPSEEK_BASE_URL,
+            temperature=temperature,
+            max_retries=5,
+            timeout=120.0,
+        )
+
     else:
         raise ValueError(
             f"Provider không hợp lệ: '{provider}'. "
-            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
+            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq, deepseek"
         )
 
 
@@ -214,9 +226,14 @@ def get_embeddings(provider: str = None):
         from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
         return SafeFastEmbedWrapper(FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"))
 
+    elif provider == "deepseek":
+        # DeepSeek chỉ phục vụ Chat model, không có Embeddings API -> dùng FastEmbed local miễn phí 100%
+        from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+        return SafeFastEmbedWrapper(FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"))
+
     else:
         raise ValueError(
             f"Provider không hợp lệ: '{provider}'. "
-            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
+            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq, deepseek"
         )
 
