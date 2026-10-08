@@ -91,7 +91,8 @@ def get_llm(provider: str = None, temperature: float = 0.0):
             api_key=config.GROQ_API_KEY,
             base_url=config.GROQ_BASE_URL,
             temperature=temperature,
-            max_retries=5,
+            max_retries=10,
+            timeout=120.0,
         )
 
     else:
@@ -99,6 +100,38 @@ def get_llm(provider: str = None, temperature: float = 0.0):
             f"Provider không hợp lệ: '{provider}'. "
             "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
         )
+
+
+from langchain_core.embeddings import Embeddings
+
+
+class SafeFastEmbedWrapper(Embeddings):
+    """
+    Wrapper bảo vệ FastEmbed để tương thích 100% với Ragas telemetry và LangChain FAISS.
+    Ragas kiểm tra getattr(embeddings, 'model') là chuỗi str (để log chi phí),
+    trong khi FastEmbed gốc lưu đối tượng TextEmbedding vào thuộc tính model.
+    """
+    def __init__(self, inner):
+        self._inner = inner
+        self.model = str(getattr(inner, "model_name", "BAAI/bge-small-en-v1.5"))
+
+    def embed_documents(self, texts):
+        return self._inner.embed_documents(texts)
+
+    def embed_query(self, text):
+        return self._inner.embed_query(text)
+
+    async def aembed_documents(self, texts):
+        return self._inner.embed_documents(texts)
+
+    async def aembed_query(self, text):
+        return self._inner.embed_query(text)
+
+    def __call__(self, text: str):
+        return self.embed_query(text)
+
+    def __getattr__(self, name):
+        return getattr(self._inner, name)
 
 
 def get_embeddings(provider: str = None):
@@ -146,13 +179,13 @@ def get_embeddings(provider: str = None):
         else:
             print("ℹ️  OpenRouter không có Embeddings API — đang sử dụng FastEmbed (local, 100% miễn phí).")
             from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
-            return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+            return SafeFastEmbedWrapper(FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"))
 
     elif provider == "gemini":
         # Dùng FastEmbed (local, miễn phí, không tốn quota API)
         try:
             from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
-            return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+            return SafeFastEmbedWrapper(FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"))
         except Exception:
             from langchain_google_genai import GoogleGenerativeAIEmbeddings
             return GoogleGenerativeAIEmbeddings(
@@ -179,10 +212,11 @@ def get_embeddings(provider: str = None):
     elif provider == "groq":
         # Groq chỉ phục vụ inference LLM, không có embeddings API -> dùng FastEmbed local miễn phí 100%
         from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
-        return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+        return SafeFastEmbedWrapper(FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5"))
 
     else:
         raise ValueError(
             f"Provider không hợp lệ: '{provider}'. "
             "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
         )
+
