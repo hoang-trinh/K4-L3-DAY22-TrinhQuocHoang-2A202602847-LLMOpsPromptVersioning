@@ -30,8 +30,8 @@ OPENAI_EMBEDDING_MODEL = os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-s
 
 # ── Google Gemini ─────────────────────────────────────────────────────────
 GOOGLE_API_KEY          = os.getenv("GOOGLE_API_KEY", "")
-GEMINI_MODEL            = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
-GEMINI_EMBEDDING_MODEL  = os.getenv("GEMINI_EMBEDDING_MODEL", "models/embedding-001")
+GEMINI_MODEL            = os.getenv("GEMINI_MODEL", "gemini-3.8-flash")
+GEMINI_EMBEDDING_MODEL  = os.getenv("GEMINI_EMBEDDING_MODEL", "models/text-embedding-004")
 
 # ── Anthropic ─────────────────────────────────────────────────────────────
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
@@ -44,8 +44,13 @@ OLLAMA_EMBEDDING_MODEL  = os.getenv("OLLAMA_EMBEDDING_MODEL", "nomic-embed-text"
 
 # ── OpenRouter ────────────────────────────────────────────────────────────
 OPENROUTER_API_KEY  = os.getenv("OPENROUTER_API_KEY", "")
-OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "openai/gpt-4o-mini")
+OPENROUTER_MODEL    = os.getenv("OPENROUTER_MODEL", "meta-llama/llama-3.3-70b-instruct:free")
 OPENROUTER_BASE_URL = "https://openrouter.ai/api/v1"
+
+# ── Groq ──────────────────────────────────────────────────────────────────
+GROQ_API_KEY  = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL    = os.getenv("GROQ_MODEL", "openai/gpt-oss-20b")
+GROQ_BASE_URL = "https://api.groq.com/openai/v1"
 
 # ── LangSmith ─────────────────────────────────────────────────────────────
 LANGSMITH_API_KEY = os.getenv("LANGCHAIN_API_KEY", "")
@@ -59,17 +64,19 @@ def validate() -> bool:
     """
     missing = []
 
-    if not LANGSMITH_API_KEY:
+    if not LANGSMITH_API_KEY or LANGSMITH_API_KEY.startswith("your_"):
         missing.append("LANGCHAIN_API_KEY (LangSmith)")
 
-    if PROVIDER == "openai" and not OPENAI_API_KEY:
+    if PROVIDER == "openai" and (not OPENAI_API_KEY or OPENAI_API_KEY.startswith("your_")):
         missing.append("OPENAI_API_KEY")
-    elif PROVIDER == "gemini" and not GOOGLE_API_KEY:
+    elif PROVIDER == "gemini" and (not GOOGLE_API_KEY or GOOGLE_API_KEY.startswith("your_")):
         missing.append("GOOGLE_API_KEY")
-    elif PROVIDER == "anthropic" and not ANTHROPIC_API_KEY:
+    elif PROVIDER == "anthropic" and (not ANTHROPIC_API_KEY or ANTHROPIC_API_KEY.startswith("your_")):
         missing.append("ANTHROPIC_API_KEY")
-    elif PROVIDER == "openrouter" and not OPENROUTER_API_KEY:
-        missing.append("OPENROUTER_API_KEY")
+    elif PROVIDER == "openrouter" and (not OPENROUTER_API_KEY or OPENROUTER_API_KEY.startswith("your_")):
+        missing.append("OPENROUTER_API_KEY (lấy tại https://openrouter.ai/keys)")
+    elif PROVIDER == "groq" and (not GROQ_API_KEY or GROQ_API_KEY.startswith("your_")):
+        missing.append("GROQ_API_KEY (lấy tại https://console.groq.com/keys)")
     # Ollama: không cần API key
 
     if missing:

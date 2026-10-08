@@ -77,12 +77,27 @@ def get_llm(provider: str = None, temperature: float = 0.0):
             api_key=config.OPENROUTER_API_KEY,
             base_url=config.OPENROUTER_BASE_URL,
             temperature=temperature,
+            default_headers={
+                "HTTP-Referer": "https://localhost",
+                "X-Title": "LangSmith Lab",
+            },
+        )
+
+    elif provider == "groq":
+        # Groq dùng OpenAI-compatible API, tốc độ siêu nhanh
+        from langchain_openai import ChatOpenAI
+        return ChatOpenAI(
+            model=config.GROQ_MODEL,
+            api_key=config.GROQ_API_KEY,
+            base_url=config.GROQ_BASE_URL,
+            temperature=temperature,
+            max_retries=5,
         )
 
     else:
         raise ValueError(
             f"Provider không hợp lệ: '{provider}'. "
-            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter"
+            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
         )
 
 
@@ -105,7 +120,7 @@ def get_embeddings(provider: str = None):
     """
     provider = (provider or config.PROVIDER).lower()
 
-    if provider in ("openai", "openrouter"):
+    if provider == "openai":
         from langchain_openai import OpenAIEmbeddings
         kwargs = {
             "model": config.OPENAI_EMBEDDING_MODEL,
@@ -115,12 +130,35 @@ def get_embeddings(provider: str = None):
             kwargs["base_url"] = config.OPENAI_BASE_URL
         return OpenAIEmbeddings(**kwargs)
 
+    elif provider == "openrouter":
+        # OpenRouter không có API Embeddings riêng
+        # Nếu có OPENAI_API_KEY hợp lệ thì dùng OpenAI, nếu không thì dùng FastEmbed local miễn phí
+        has_real_openai_key = bool(config.OPENAI_API_KEY and not config.OPENAI_API_KEY.startswith("your_"))
+        if has_real_openai_key:
+            from langchain_openai import OpenAIEmbeddings
+            kwargs = {
+                "model": config.OPENAI_EMBEDDING_MODEL,
+                "api_key": config.OPENAI_API_KEY,
+            }
+            if config.OPENAI_BASE_URL:
+                kwargs["base_url"] = config.OPENAI_BASE_URL
+            return OpenAIEmbeddings(**kwargs)
+        else:
+            print("ℹ️  OpenRouter không có Embeddings API — đang sử dụng FastEmbed (local, 100% miễn phí).")
+            from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+            return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+
     elif provider == "gemini":
-        from langchain_google_genai import GoogleGenerativeAIEmbeddings
-        return GoogleGenerativeAIEmbeddings(
-            model=config.GEMINI_EMBEDDING_MODEL,
-            google_api_key=config.GOOGLE_API_KEY,
-        )
+        # Dùng FastEmbed (local, miễn phí, không tốn quota API)
+        try:
+            from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+            return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+        except Exception:
+            from langchain_google_genai import GoogleGenerativeAIEmbeddings
+            return GoogleGenerativeAIEmbeddings(
+                model=config.GEMINI_EMBEDDING_MODEL,
+                google_api_key=config.GOOGLE_API_KEY,
+            )
 
     elif provider == "anthropic":
         # Anthropic không cung cấp Embeddings API → dùng OpenAI thay thế
@@ -138,8 +176,13 @@ def get_embeddings(provider: str = None):
             base_url=config.OLLAMA_BASE_URL,
         )
 
+    elif provider == "groq":
+        # Groq chỉ phục vụ inference LLM, không có embeddings API -> dùng FastEmbed local miễn phí 100%
+        from langchain_community.embeddings.fastembed import FastEmbedEmbeddings
+        return FastEmbedEmbeddings(model_name="BAAI/bge-small-en-v1.5")
+
     else:
         raise ValueError(
             f"Provider không hợp lệ: '{provider}'. "
-            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter"
+            "Chọn một trong: openai, gemini, anthropic, ollama, openrouter, groq"
         )
